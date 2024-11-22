@@ -100,7 +100,12 @@ int main(int argc, char *argv[])
     int process_id = 0;
     while (process_id < num_rows) {
         // Wait until the arrival time of the next process
-        while (getClk() < processes[process_id].arrival);
+        while (getClk() < processes[process_id].arrival) {
+            // Print the current time every second
+            clk = getClk();
+            while (clk == getClk());
+            printf("current time is %d\n", getClk());
+        };
 
         // Send the process to the scheduler
         sendMsg(processes[process_id], msgqid);
