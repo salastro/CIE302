@@ -21,7 +21,7 @@ typedef short bool;
 ///===============================
 //don't mess with these variable//
 int * shmaddr;                  //
-char msqkey = 'P';              //
+char msgqkey = 'P';             //
 char termkey = 'T';             //
 //================================
 

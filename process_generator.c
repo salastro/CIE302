@@ -1,6 +1,6 @@
 #include "headers.h"
 
-int msqid;
+int msgqid, termqid;
 
 void clearResources(int);
 int countProcesses(const char *filename);
@@ -42,10 +42,15 @@ int main(int argc, char *argv[])
     int selectedAlgorithm = getSchedulingAlgorithm(&timeQuantum);
 
     // 3. Initiate and create the scheduler and clock processes.
-    // 3.1. Initialize the message queue
-    msqid = initMsgq(msqkey);
-    if (msqid == -1) {
+    // 3.1. Initialize the message queue and termination queue
+    msgqid = initMsgq(msgqkey);
+    if (msgqid == -1) {
         perror("Error in initializing message queue");
+        exit(-1);
+    }
+    termqid = initMsgq(termkey);
+    if (termqid == -1) {
+        perror("Error in initializing termination queue");
         exit(-1);
     }
 
@@ -98,7 +103,7 @@ int main(int argc, char *argv[])
         while (getClk() < processes[process_id].arrival);
 
         // Send the process to the scheduler
-        sendMsg(processes[process_id], msqid);
+        sendMsg(processes[process_id], msgqid);
         printf("Sent process with ID %d to the scheduler\n", processes[process_id].id);
 
         process_id++;
@@ -120,7 +125,8 @@ int main(int argc, char *argv[])
 void clearResources(int signum)
 {
     //TODO Clears all resources in case of interruption
-    msgctl(msqid, IPC_RMID, (struct msqid_ds *)0);
+    msgctl(msgqid, IPC_RMID, (struct msqid_ds *)0);
+    msgctl(termqid, IPC_RMID, (struct msqid_ds *)0);
     destroyClk(true);
     exit(0);
 }
