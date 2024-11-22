@@ -1,10 +1,12 @@
 #include "headers.h"
 
+int msqid;
+
 void clearResources(int);
 int countProcesses(const char *filename);
-void readProcessData(const char *filename, int num_rows, int *id, int *arrival, int *runtime, int *priority);
+void readProcessData(const char *filename, int num_rows, process_t *processes);
 int getSchedulingAlgorithm(int *timeQuantum);
-void testExtractedData(int num_rows, int *id, int *arrival, int *runtime, int *priority);
+void testExtractedData(int num_rows, process_t *processes);
 
 #define SJF 1
 #define PHPF 2
@@ -23,53 +25,92 @@ int main(int argc, char *argv[])
     }
 
     // Dynamically allocate arrays based on the number of rows
-    int *id = malloc(num_rows * sizeof(int));
-    int *arrival = malloc(num_rows * sizeof(int));
-    int *runtime = malloc(num_rows * sizeof(int));
-    int *priority = malloc(num_rows * sizeof(int));
-
-    if (id == NULL || arrival == NULL || runtime == NULL || priority == NULL) {
+    process_t *processes = malloc(num_rows * sizeof(process_t));
+    if (processes == NULL) {
         printf("Error: Memory allocation failed\n");
         return 1;
     }
 
     // Read and store data into arrays
-    readProcessData(argv[1], num_rows, id, arrival, runtime, priority);
+    readProcessData(argv[1], num_rows, processes);
 
     // Test the extracted data
-    testExtractedData(num_rows,id,arrival,runtime,priority);
+    testExtractedData(num_rows, processes);
 
     // 2. Ask the user for the chosen scheduling algorithm and its parameters, if there are any.
-        int timeQuantum = 0;
-        int selectedAlgorithm = getSchedulingAlgorithm(&timeQuantum);
+    int timeQuantum = 0;
+    int selectedAlgorithm = getSchedulingAlgorithm(&timeQuantum);
 
     // 3. Initiate and create the scheduler and clock processes.
+    // 3.1. Initialize the message queue
+    msqid = initMsgq(msqkey);
+
+    // 3.2. Fork the clock and scheduler processes
+    int clk_pid = fork();
+    if (clk_pid == -1) {
+        perror("Error in forking clock process");
+        exit(-1);
+    } else if (clk_pid == 0) {
+        char *args[] = {"./clk.out", NULL};
+        execvp(args[0], args);
+    }
+
+    // 3.3. Send the selected algorithm and its parameters to the scheduler
+    int scheduler_pid = fork();
+    if (scheduler_pid == -1) {
+        perror("Error in forking scheduler process");
+        exit(-1);
+    } else if (scheduler_pid == 0) {
+        char algorithm[2];
+        sprintf(algorithm, "%d", selectedAlgorithm);
+        char quantum[5];
+        sprintf(quantum, "%d", timeQuantum);
+        char *args[] = {"./scheduler.out", algorithm, quantum, NULL};
+        execvp(args[0], args);
+    }
+
     // 4. Use this function after creating the clock process to initialize clock
     initClk();
 
     // To get time use this
-    int x = getClk();
-    printf("current time is %d\n", x);
+    int clk = getClk();
+    printf("current time is %d\n", clk);
 
     // TODO Generation Main Loop
     // 5. Create a data structure for processes and provide it with its parameters.
+    // (DONE in headers.h)
     // 6. Send the information to the scheduler at the appropriate time.
+    int process_id = 0;
+    while (process_id < num_rows) {
+        // Wait until the arrival time of the next process
+        while (getClk() < processes[process_id].arrival);
+
+        // Send the process to the scheduler
+        sendMsg(processes[process_id], msqid);
+        printf("Sent process with ID %d to the scheduler\n", processes[process_id].id);
+
+        process_id++;
+    }
+
+    // Wait for the scheduler to finish
+    waitpid(scheduler_pid, NULL, 0);
+    printf("Scheduler has finished\n");
 
     // 7. Clear clock resources
-    destroyClk(true);
+    clearResources(0);
 
     // Free allocated memory
-    free(id);
-    free(arrival);
-    free(runtime);
-    free(priority);
+    free(processes);
 
     return 0;
 }
 
 void clearResources(int signum)
 {
-       // TODO Clears all resources in case of interruption
+    //TODO Clears all resources in case of interruption
+    msgctl(msqid, IPC_RMID, (struct msqid_ds *)0);
+    destroyClk(true);
+    exit(0);
 }
 
 // Function to count the number of Processes in the file
@@ -95,7 +136,7 @@ int countProcesses(const char *filename) {
 }
 
 // Function to read and store process data from the file
-void readProcessData(const char *filename, int num_rows, int *id, int *arrival, int *runtime, int *priority) {
+void readProcessData(const char *filename, int num_rows, process_t *processes) {
     FILE *file = fopen(filename, "r");
     if (file == NULL) {
         printf("Error: Could not open file\n");
@@ -106,9 +147,14 @@ void readProcessData(const char *filename, int num_rows, int *id, int *arrival, 
     // Skip the header line
     fgets(buffer, sizeof(buffer), file);
 
-    // Read and store values into arrays
+    // Read and store values into the process_t array
     int count = 0;
-    while (fscanf(file, "%d %d %d %d", &id[count], &arrival[count], &runtime[count], &priority[count]) == 4) {
+    while (count < num_rows && fscanf(file, "%d %d %d %d", 
+            &processes[count].id, 
+            &processes[count].arrival, 
+            &processes[count].runtime, 
+            &processes[count].priority) == 4) {
+        processes[count].mtype = 0;  // Initialize mtype if needed
         count++;
     }
 
@@ -152,11 +198,15 @@ int getSchedulingAlgorithm(int *timeQuantum) {
 }
 
 // Function to make sure that the data extracted right
-void testExtractedData(int num_rows, int *id, int *arrival, int *runtime, int *priority)
+void testExtractedData(int num_rows, process_t *processes)
 {
     printf("Extracted data:\n");
     printf("ID    Arrival    Runtime    Priority\n");
     for (int i = 0; i < num_rows; i++) {
-        printf("%d     %d         %d         %d\n", id[i], arrival[i], runtime[i], priority[i]);
+        printf("%d     %d         %d         %d\n", 
+               processes[i].id, 
+               processes[i].arrival, 
+               processes[i].runtime, 
+               processes[i].priority);
     }
 }
