@@ -44,19 +44,27 @@ int main(int argc, char *argv[])
     // 3. Initiate and create the scheduler and clock processes.
     // 3.1. Initialize the message queue
     msqid = initMsgq(msqkey);
+    if (msqid == -1) {
+        perror("Error in initializing message queue");
+        exit(-1);
+    }
 
     // 3.2. Fork the clock and scheduler processes
-    int clk_pid = fork();
+    pid_t clk_pid = fork();
     if (clk_pid == -1) {
         perror("Error in forking clock process");
         exit(-1);
     } else if (clk_pid == 0) {
         char *args[] = {"./clk.out", NULL};
-        execvp(args[0], args);
+        int clk_exec = execvp(args[0], args);
+        if (clk_exec == -1) {
+            perror("Error in executing clock process");
+            exit(-1);
+        }
     }
 
     // 3.3. Send the selected algorithm and its parameters to the scheduler
-    int scheduler_pid = fork();
+    pid_t scheduler_pid = fork();
     if (scheduler_pid == -1) {
         perror("Error in forking scheduler process");
         exit(-1);
@@ -66,7 +74,11 @@ int main(int argc, char *argv[])
         char quantum[5];
         sprintf(quantum, "%d", timeQuantum);
         char *args[] = {"./scheduler.out", algorithm, quantum, NULL};
-        execvp(args[0], args);
+        int scheduler_exec = execvp(args[0], args);
+        if (scheduler_exec == -1) {
+            perror("Error in executing scheduler process");
+            exit(-1);
+        }
     }
 
     // 4. Use this function after creating the clock process to initialize clock
