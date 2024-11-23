@@ -43,7 +43,7 @@ int main(int argc, char *argv[])
 
     // 3. Initiate and create the scheduler and clock processes.
     // 3.1. Initialize the message queue and termination queue
-    msgqid = initMsgq(msgqkey);
+    msgqid = initMsgq(msgkey);
     if (msgqid == -1) {
         perror("Error in initializing message queue");
         exit(-1);
@@ -107,12 +107,17 @@ int main(int argc, char *argv[])
             printf("current time is %d\n", getClk());
         };
 
-        // Send the process to the scheduler
+        // Send the process to the message queue
         sendMsg(processes[process_id], msgqid);
-        printf("Sent process with ID %d to the scheduler\n", processes[process_id].id);
+        printf("Sent process with ID %d to the message queue\n", processes[process_id].id);
 
         process_id++;
     }
+
+    // Send a process with ID -1 to indicate the end of the processes
+    process_t last_process;
+    last_process.id = -1;
+    sendMsg(last_process, msgqid);
 
     // Wait for the scheduler to finish
     waitpid(scheduler_pid, NULL, 0);
@@ -177,6 +182,7 @@ void readProcessData(const char *filename, int num_rows, process_t *processes) {
             &processes[count].arrival, 
             &processes[count].runtime, 
             &processes[count].priority) == 4) {
+        processes[count].remainingTime = processes[count].runtime; // Initialize remainingTime
         processes[count].mtype = 0;  // Initialize mtype if needed
         count++;
     }

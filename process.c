@@ -4,47 +4,35 @@ int clk;
 int remainingtime;
 int termqid;
 
-// Handle the command line arguments
-void parseArgs(int argc, char *argv[]) {
-    remainingtime = atoi(argv[1]);
-    if (remainingtime <= 0) {
-        perror("Invalid remaining time");
-        exit(-1);
-    }
-}
-
-// Simulating CPU-bound behavior
-void simulateProcess() {
+// Simulating CPU-bound process behavior
+void simProc() {
     while (remainingtime > 0) {
         // Consume the remaining time only if the clock has ticked
         clk = getClk();
         while (clk == getClk());
+        printf("Process with PID %d at time %d\n", getpid(), getClk());
         remainingtime--;
     }
 }
 
-// Notify the scheduler upon completion
-void notifyScheduler() {
+int main(int argc, char *argv[]) {
+    printf("Starting process with PID %d\n", getpid());
+    remainingtime = atoi(argv[0]);
+    if (remainingtime <= 0) {
+        printf("Invalid remaining time %d\n", remainingtime);
+        exit(-1);
+    }
+
+    initClk();
+    simProc();
+
     termqid = initMsgq(termkey);
     if (termqid == -1) {
         perror("Error in initializing termination queue");
         exit(-1);
     }
-    termination_t term;
-    term.mtype = 1;
-    term.process_id = getpid();
-    int send_val = msgsnd(termqid, &term, sizeof(term), 0);
-    if (send_val == -1) {
-        perror("Error in sending the termination message");
-        exit(-1);
-    }
-}
+    termProc(getpid(), termqid);
 
-int main(int argc, char *argv[]) {
-    parseArgs(argc, argv);
-    initClk();
-    simulateProcess();
-    notifyScheduler();
     destroyClk(false);
     exit(0);
 }
