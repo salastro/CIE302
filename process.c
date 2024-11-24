@@ -2,7 +2,6 @@
 
 int clk;
 int remainingtime;
-int termqid;
 
 // Simulating CPU-bound process behavior
 void simProc() {
@@ -26,12 +25,8 @@ int main(int argc, char *argv[]) {
     initClk();
     simProc();
 
-    termqid = initMsgq(termkey);
-    if (termqid == -1) {
-        perror("Error in initializing termination queue");
-        exit(-1);
-    }
-    termProc(getpid(), termqid);
+    // Send a termination message to the scheduler Using default SIGCHLD signal
+    // Does not need to be explicitly handled
 
     destroyClk(false);
     exit(0);

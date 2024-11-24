@@ -1,23 +1,23 @@
 #pragma once
-#include <sys/types.h>
-#include <sys/ipc.h>
-#include <sys/msg.h>
+#include <stdbool.h>
 #include <stdio.h>
 #include <stdlib.h>
+#include <sys/ipc.h>
+#include <sys/msg.h>
+#include <sys/types.h>
 
-typedef struct 
-{
+typedef struct {
     int id;
     int arrival;
     int runtime;
     int priority;
     int remainingTime;
+    bool running;
     pid_t pid;
-    long mtype;
+    // long mtype;
 } process_t;
 
-typedef struct 
-{
+typedef struct {
     long mtype;
     int pid;
 } termination_t;

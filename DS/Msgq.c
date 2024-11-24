@@ -37,17 +37,3 @@ process_t receiveMsg(int msgqid)
     }
     return process;
 }
-
-// Send a termination message to the termination queue
-void termProc(int pid, int termqid)
-{
-    termination_t term;
-    term.mtype = 1;
-    term.pid = pid;
-    int send_val = msgsnd(termqid, &term, sizeof(term), 0);
-    if (send_val == -1)
-    {
-        perror("Error in sending the termination message");
-        exit(-1);
-    }
-}

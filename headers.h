@@ -25,7 +25,6 @@
 //don't mess with these variable//
 int * shmaddr;                  //
 char msgkey = 'P';             //
-char termkey = 'T';             //
 //================================
 
 int getClk()

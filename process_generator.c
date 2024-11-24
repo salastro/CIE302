@@ -1,6 +1,6 @@
 #include "headers.h"
 
-int msgqid, termqid;
+int msgqid;
 
 void clearResources(int);
 int countProcesses(const char *filename);
@@ -48,11 +48,6 @@ int main(int argc, char *argv[])
         perror("Error in initializing message queue");
         exit(-1);
     }
-    termqid = initMsgq(termkey);
-    if (termqid == -1) {
-        perror("Error in initializing termination queue");
-        exit(-1);
-    }
 
     // 3.2. Fork the clock and scheduler processes
     pid_t clk_pid = fork();
@@ -89,14 +84,11 @@ int main(int argc, char *argv[])
     // 4. Use this function after creating the clock process to initialize clock
     initClk();
 
-    // To get time use this
-    int clk = getClk();
-    printf("current time is %d\n", clk);
-
     // TODO Generation Main Loop
     // 5. Create a data structure for processes and provide it with its parameters.
     // (DONE in headers.h)
     // 6. Send the information to the scheduler at the appropriate time.
+    int clk = getClk();
     int process_id = 0;
     while (process_id < num_rows) {
         // Wait until the arrival time of the next process
@@ -104,7 +96,7 @@ int main(int argc, char *argv[])
             // Print the current time every second
             clk = getClk();
             while (clk == getClk());
-            printf("current time is %d\n", getClk());
+            printf("Generator %d, time %d\n", getpid(), getClk());
         };
 
         // Send the process to the message queue
@@ -136,7 +128,6 @@ void clearResources(int signum)
 {
     //TODO Clears all resources in case of interruption
     msgctl(msgqid, IPC_RMID, (struct msqid_ds *)0);
-    msgctl(termqid, IPC_RMID, (struct msqid_ds *)0);
     destroyClk(true);
     exit(0);
 }
@@ -182,8 +173,9 @@ void readProcessData(const char *filename, int num_rows, process_t *processes) {
             &processes[count].arrival, 
             &processes[count].runtime, 
             &processes[count].priority) == 4) {
-        processes[count].remainingTime = processes[count].runtime; // Initialize remainingTime
-        processes[count].mtype = 0;  // Initialize mtype if needed
+        processes[count].remainingTime = processes[count].runtime;
+        processes[count].running = false;
+        // processes[count].mtype = 0;
         count++;
     }
 
