@@ -1,4 +1,5 @@
 #include "headers.h"
+#include <limits.h>
 
 int msgqid;
 
@@ -107,8 +108,11 @@ int main(int argc, char *argv[])
     }
 
     // Send a process with ID -1 to indicate the end of the processes
-    process_t last_process;
-    last_process.id = -1;
+    process_t last_process = {
+        .id = -1,
+        .runtime = INT_MAX,
+        .priority = INT_MAX,
+    };
     sendMsg(last_process, msgqid);
 
     // Wait for the scheduler to finish
