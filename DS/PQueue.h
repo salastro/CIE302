@@ -8,6 +8,7 @@
 typedef struct Node
 {
     process_t process;
+    int priority;
     struct Node *next;
 } Node;
 
