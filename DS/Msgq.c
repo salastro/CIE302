@@ -33,7 +33,7 @@ process_t receiveMsg(int msgqid)
     if (receive_val == -1)
     {
         perror("Error in receiving the process");
-        exit(-1);
+        process.id = -1;
     }
     return process;
 }

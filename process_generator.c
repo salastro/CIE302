@@ -109,7 +109,7 @@ int main(int argc, char *argv[])
 
     // Send a process with ID -1 to indicate the end of the processes
     process_t last_process = {
-        .id = -1,
+        .id = -2,
         .runtime = INT_MAX,
         .priority = INT_MAX,
     };

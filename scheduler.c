@@ -2,6 +2,8 @@
 
 int clk;
 int msqid;
+Node *head;
+pid_t pid;
 process_t running = {
     .id = -1,
     .arrival = -1,
@@ -11,7 +13,16 @@ process_t running = {
     .running = false,
     .pid = -1,
 };
+process_t incoming;
+bool last = false;
 
+pid_t startProcess(process_t process);
+int stopProcess(int pid);
+int continueProcess(int pid);
+void handleTermination(int signum);
+void sjf();
+void phpf();
+void rr(int quantum);
 
 pid_t startProcess(process_t process) {
     process.pid = fork();
@@ -76,16 +87,19 @@ void sjf() {
         if (!last) {
             // Receive a new process
             incoming = receiveMsg(msqid);
-            if (incoming.id == -1)
+            if (incoming.id == -2)
                 last = true;
-            // Push the new process into the priority queue
-            printf("Received process with ID %d and runtime %d\n", incoming.id, incoming.runtime);
-            push(&head, incoming, incoming.runtime);
+            if (incoming.id != -1) {
+                // Push the new process into the priority queue
+                printf("Received process with ID %d and runtime %d\n",
+                       incoming.id, incoming.runtime);
+                push(&head, incoming, incoming.runtime);
+            }
         }
         if (!isEmptyPQ(&head) && !running.running) {
             // Pop the process with the shortest runtime
             running = pop(&head);
-            if (running.id == -1)
+            if (running.id == -2)
                 return;
             running.pid = startProcess(running);
             if (running.pid == -1)
@@ -114,6 +128,9 @@ int main(int argc, char * argv[])
 
     // Initialize the message queue
     msqid = initMsgq(msgkey);
+
+    // Initialize the priority queue
+    initializePQ(&head);
 
     // Set the signal handler
     signal(SIGCHLD, handleTermination);
