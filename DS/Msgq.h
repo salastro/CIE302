@@ -17,12 +17,6 @@ typedef struct {
     // long mtype;
 } process_t;
 
-typedef struct {
-    long mtype;
-    int pid;
-} termination_t;
-
 int initMsgq(char key);
 void sendMsg(process_t process, int msgqid);
 process_t receiveMsg(int msgqid);
-void termProc(int pid, int termqid);
