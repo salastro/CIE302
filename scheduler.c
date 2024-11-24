@@ -30,7 +30,6 @@ pid_t startProcess(process_t process) {
             perror("Error in executing process");
             exit(-1);
         }
-        process.running = true;
         exit(0);
     }
     return process.pid;
@@ -88,8 +87,10 @@ void sjf() {
             running = pop(&head);
             if (running.id == -1)
                 return;
+            running.pid = startProcess(running);
+            if (running.pid == -1)
+                return;
             running.running = true;
-            pid = startProcess(running);
         }
     }
 }
