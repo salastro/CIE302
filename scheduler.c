@@ -1,41 +1,43 @@
+#include "DS/Msgq.h"
 #include "headers.h"
 
 int clk;
 int msqid;
 Node *head;
-pid_t pid;
 process_t running = {
     .id = -1,
     .arrival = -1,
     .runtime = -1,
     .priority = -1,
-    .remainingTime = -1,
-    .running = false,
+    .isStopped = -1,
+    .isStopped = false,
+    .isRunning = false,
     .pid = -1,
 };
 process_t incoming;
 bool last = false;
 
-pid_t startProcess(process_t process);
-int stopProcess(int pid);
-int continueProcess(int pid);
+int startProcess(process_t * proc);
+int stopProcess(process_t * proc);
+int continueProcess(process_t * proc);
 void handleTermination(int signum);
-void sjf();
-void phpf();
-void rr(int quantum);
+void SchedAlgoSJF();
+void SchedAlgoPHPF();
+void SchedAlgoRR(int quantum);
 
-pid_t startProcess(process_t process) {
-    process.pid = fork();
-    if (process.pid == -1) {
+int startProcess(process_t * proc) {
+    printf("Process ID %d starting at time %d\n", proc->id, getClk());
+    proc->pid = fork();
+    if (proc->pid == -1) {
         perror("Error in forking process");
         exit(-1);
     }
-    if (process.pid == 0) {
-        char remainingTime[10];
-        sprintf(remainingTime, "%d", process.runtime);
+    if (proc->pid == 0) {
+        char runtime[10];
+        sprintf(runtime, "%d", proc->runtime);
         char id[10];
-        sprintf(id, "%d", process.id);
-        char *args[] = {"./process.out", id, remainingTime, NULL};
+        sprintf(id, "%d", proc->id);
+        char *args[] = {"./process.out", id, runtime, NULL};
         int proc_exec = execvp(args[0], args);
         if (proc_exec == -1) {
             perror("Error in executing process");
@@ -43,45 +45,40 @@ pid_t startProcess(process_t process) {
         }
         exit(0);
     }
-    return process.pid;
+    return proc->pid;
 }
 
-int stopProcess(int pid) {
+int stopProcess(process_t * proc) {
+    pid_t pid = proc->pid;
     int status = kill(pid, SIGSTOP);
     if (status == -1) {
         perror("Error in stopping process");
         exit(-1);
     }
+    proc->isStopped = true;
+    printf("Process ID %d stopped at time %d\n", running.id, getClk());
     return status;
 }
 
-int continueProcess(int pid) {
+int continueProcess(process_t * proc) {
+    pid_t pid = proc->pid;
     int status = kill(pid, SIGCONT);
     if (status == -1) {
         perror("Error in continuing process");
         exit(-1);
     }
+    proc->isStopped = false;
+    printf("Process ID %d continued at time %d\n", running.id, getClk());
     return status;
 }
 
 void handleTermination(int signum) {
-    running.running = false;
+    running.isRunning = false;
     printf("Process ID %d terminated at time %d\n", running.id, getClk());
 }
 
-void sjf();
-void phpf();
-void rr();
-
 // Shortest Job First
-void sjf() {
-    // Initialize the priority queue
-    Node *head;
-    initializePQ(&head);
-    process_t incoming;
-    pid_t pid;
-    bool last = false;
-
+void SchedAlgoSJF() {
     // Loop until there are no more processes
     while (true) {
         if (!last) {
@@ -89,31 +86,109 @@ void sjf() {
             incoming = receiveMsg(msqid);
             if (incoming.id == -2)
                 last = true;
-            if (incoming.id != -1) {
+            else if (incoming.id != -1) {
                 // Push the new process into the priority queue
                 printf("Received process with ID %d and runtime %d\n",
                        incoming.id, incoming.runtime);
                 push(&head, incoming, incoming.runtime);
             }
         }
-        if (!isEmptyPQ(&head) && !running.running) {
+        // Wait for the next clock tick
+        clk = getClk();
+        if (!isEmptyPQ(&head) && !running.isRunning && clk != getClk()) {
             // Pop the process with the shortest runtime
             running = pop(&head);
             if (running.id == -2)
                 return;
-            running.pid = startProcess(running);
+            running.pid = startProcess(&running);
             if (running.pid == -1)
                 return;
-            running.running = true;
+            running.isRunning = true;
         }
     }
 }
 
 // Preemptive Highest Priority First
-void phpf() {}
+void SchedAlgoPHPF() {
+    // Loop until there are no more processes
+    while (true) {
+        if (!last) {
+            // Receive a new process
+            incoming = receiveMsg(msqid);
+            if (incoming.id == -2)
+                last = true;
+            else if (incoming.id != -1) {
+                // Push the new process into the priority queue
+                printf("Received process with ID %d and priority %d\n",
+                       incoming.id, incoming.priority);
+                push(&head, incoming, incoming.priority);
+                if (running.isRunning && head->priority < running.priority) {
+                    stopProcess(&running);
+                    push(&head, running, running.priority);
+                    running.isRunning = false;
+                }
+            }
+        }
+        // Wait for the next clock tick
+        if (!isEmptyPQ(&head) && !running.isRunning) {
+            // Pop the process with the shortest runtime
+            running = pop(&head);
+            if (running.id == -2)
+                return;
+            // Check if the process is new or continued
+            if (!running.isStopped) {
+                running.pid = startProcess(&running);
+                if (running.pid == -1)
+                    return;
+            } else {
+                continueProcess(&running);
+            }
+            running.isRunning = true;
+        }
+    }
+}
 
 // Round Robin
-void rr() {}
+void SchedAlgoRR(int quantum) {
+    int remainingQuantum = quantum;
+    // Loop until there are no more processes
+    while (true) {
+        if (!last) {
+            // Receive a new process
+            incoming = receiveMsg(msqid);
+            if (incoming.id == -2)
+                last = true;
+            else if (incoming.id != -1) {
+                // Push the new process into the priority queue
+                printf("Received process with ID %d\n", incoming.id);
+                push(&head, incoming, 0);
+            }
+        }
+        if (!isEmptyPQ(&head) && !running.isRunning) {
+            running = pop(&head);
+            if (running.id == -2)
+                return;
+            if (!running.isStopped) {
+                int status = startProcess(&running);
+                if (status == -1)
+                    return;
+            } else {
+                continueProcess(&running);
+            }
+            remainingQuantum = quantum;
+            running.isRunning = true;
+        }
+        else if (running.isRunning) {
+            remainingQuantum--;
+            tickClk();
+            if (remainingQuantum <= 0 && !isEmptyPQ(&head)) {
+                stopProcess(&running);
+                push(&head, running, 0);
+                running.isRunning = false;
+            }
+        }
+    }
+}
 
 
 int main(int argc, char * argv[])
@@ -133,15 +208,18 @@ int main(int argc, char * argv[])
     initializePQ(&head);
 
     // Set the signal handler
-    signal(SIGCHLD, handleTermination);
+    // signal(SIGCHLD, handleTermination);
+    signal(SIGUSR1, handleTermination);
 
     switch (algorithm) {
         case SJF:
-            sjf();
+            SchedAlgoSJF();
             break;
         case PHPF:
+            SchedAlgoPHPF();
             break;
         case RR:
+            SchedAlgoRR(quantum);
             break;
         default:
             perror("Invalid algorithm");

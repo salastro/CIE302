@@ -89,14 +89,12 @@ int main(int argc, char *argv[])
     // 5. Create a data structure for processes and provide it with its parameters.
     // (DONE in headers.h)
     // 6. Send the information to the scheduler at the appropriate time.
-    int clk = getClk();
     int process_id = 0;
     while (process_id < num_rows) {
         // Wait until the arrival time of the next process
         while (getClk() < processes[process_id].arrival) {
             // Print the current time every second
-            clk = getClk();
-            while (clk == getClk());
+            tickClk();
             printf("Generator %d, time %d\n", getpid(), getClk());
         };
 
@@ -177,8 +175,8 @@ void readProcessData(const char *filename, int num_rows, process_t *processes) {
             &processes[count].arrival, 
             &processes[count].runtime, 
             &processes[count].priority) == 4) {
-        processes[count].remainingTime = processes[count].runtime;
-        processes[count].running = false;
+        processes[count].isStopped = false;
+        processes[count].isRunning = false;
         // processes[count].mtype = 0;
         count++;
     }

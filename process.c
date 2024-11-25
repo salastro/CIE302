@@ -8,10 +8,9 @@ int remainingtime;
 void simProc() {
     while (remainingtime > 0) {
         // Consume the remaining time only if the clock has ticked
-        clk = getClk();
-        while (clk == getClk());
-        printf("Process ID %d PID %d, parent %d, time %d\n", id, getpid(), getppid(), getClk());
         remainingtime--;
+        tickClk();
+        printf("Process ID %d PID %d, parent %d, time %d\n", id, getpid(), getppid(), getClk());
     }
 }
 
@@ -26,8 +25,13 @@ int main(int argc, char *argv[]) {
     initClk();
     simProc();
 
-    // Send a termination message to the scheduler Using default SIGCHLD signal
-    // Does not need to be explicitly handled
+    // Send a termination message to the scheduler when the process finishes
+    // The scheduler will handle the termination of the process
+    int status = kill(getppid(), SIGUSR1);
+    if (status == -1) {
+        perror("Error in sending termination signal");
+        exit(-1);
+    }
 
     destroyClk(false);
     exit(0);

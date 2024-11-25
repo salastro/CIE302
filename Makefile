@@ -1,12 +1,14 @@
+CFLAGS = -g -Wall -std=c99 -pedantic -D_POSIX_C_SOURCE=199309L -D_GNU_SOURCE -fstack-protector-all
+
 build:
-	gcc process_generator.c DS/Msgq.c -o process_generator.out
-	gcc clk.c -o clk.out
-	gcc scheduler.c DS/Msgq.c DS/PQueue.c -o scheduler.out
-	gcc process.c DS/Msgq.c -o process.out
-	gcc test_generator.c -o test_generator.out
+	gcc $(CFLAGS) process_generator.c DS/Msgq.c -o process_generator.out
+	gcc $(CFLAGS) clk.c -o clk.out
+	gcc $(CFLAGS) scheduler.c DS/Msgq.c DS/PQueue.c -o scheduler.out
+	gcc $(CFLAGS) process.c DS/Msgq.c -o process.out
+	gcc $(CFLAGS) test_generator.c -o test_generator.out
 
 clean:
-	rm -f *.out  processes.txt
+	rm -f *.out processes.txt
 
 all: clean build
 

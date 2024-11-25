@@ -67,3 +67,9 @@ void destroyClk(bool terminateAll)
         killpg(getpgrp(), SIGINT);
     }
 }
+
+// Wait for one clock second
+void tickClk() {
+    int clk = getClk();
+    while (clk == getClk());
+}

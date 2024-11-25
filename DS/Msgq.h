@@ -6,15 +6,19 @@
 #include <sys/msg.h>
 #include <sys/types.h>
 
+// bool and long causes stack smashing
+// TODO: Fix the issue
 typedef struct {
+    // long mtype;
     int id;
     int arrival;
     int runtime;
     int priority;
-    int remainingTime;
-    bool running;
+    // bool isRunning;
+    // bool isStopped;
+    int isRunning;
+    int isStopped;
     pid_t pid;
-    // long mtype;
 } process_t;
 
 int initMsgq(char key);
