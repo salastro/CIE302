@@ -1,4 +1,5 @@
 #include "DS/Msgq.h"
+#include "DS/PQueue.h"
 #include "headers.h"
 
 int clk;
@@ -20,7 +21,8 @@ bool last = false;
 int startProcess(process_t * proc);
 int stopProcess(process_t * proc);
 int continueProcess(process_t * proc);
-void handleTermination(int signum);
+void handleProcTerm(int signum);
+void handleLastProc(int signum);
 void SchedAlgoSJF();
 void SchedAlgoPHPF();
 void SchedAlgoRR(int quantum);
@@ -72,9 +74,14 @@ int continueProcess(process_t * proc) {
     return status;
 }
 
-void handleTermination(int signum) {
+void handleProcTerm(int signum) {
     running.isRunning = false;
     printf("Process ID %d terminated at time %d\n", running.id, getClk());
+}
+
+void handleLastProc(int signum) {
+    last = true;
+    printf("Received last process signal at time %d\n", getClk());
 }
 
 // Shortest Job First
@@ -84,9 +91,7 @@ void SchedAlgoSJF() {
         if (!last) {
             // Receive a new process
             incoming = receiveMsg(msqid);
-            if (incoming.id == -2)
-                last = true;
-            else if (incoming.id != -1) {
+            if (incoming.id != -1) {
                 // Push the new process into the priority queue
                 printf("Received process with ID %d and runtime %d\n",
                        incoming.id, incoming.runtime);
@@ -98,12 +103,14 @@ void SchedAlgoSJF() {
         if (!isEmptyPQ(&head) && !running.isRunning && clk != getClk()) {
             // Pop the process with the shortest runtime
             running = pop(&head);
-            if (running.id == -2)
-                return;
             running.pid = startProcess(&running);
             if (running.pid == -1)
                 return;
             running.isRunning = true;
+        }
+        else if (isEmptyPQ(&head) && last && !running.isRunning) {
+            printf("No more processes to run\n");
+            return;
         }
     }
 }
@@ -115,9 +122,7 @@ void SchedAlgoPHPF() {
         if (!last) {
             // Receive a new process
             incoming = receiveMsg(msqid);
-            if (incoming.id == -2)
-                last = true;
-            else if (incoming.id != -1) {
+            if (incoming.id != -1) {
                 // Push the new process into the priority queue
                 printf("Received process with ID %d and priority %d\n",
                        incoming.id, incoming.priority);
@@ -130,11 +135,10 @@ void SchedAlgoPHPF() {
             }
         }
         // Wait for the next clock tick
-        if (!isEmptyPQ(&head) && !running.isRunning) {
+        clk = getClk();
+        if (!isEmptyPQ(&head) && !running.isRunning && clk != getClk()) {
             // Pop the process with the shortest runtime
             running = pop(&head);
-            if (running.id == -2)
-                return;
             // Check if the process is new or continued
             if (!running.isStopped) {
                 running.pid = startProcess(&running);
@@ -144,6 +148,10 @@ void SchedAlgoPHPF() {
                 continueProcess(&running);
             }
             running.isRunning = true;
+        }
+        else if (isEmptyPQ(&head) && last && !running.isRunning) {
+            printf("No more processes to run\n");
+            return;
         }
     }
 }
@@ -156,9 +164,7 @@ void SchedAlgoRR(int quantum) {
         if (!last) {
             // Receive a new process
             incoming = receiveMsg(msqid);
-            if (incoming.id == -2)
-                last = true;
-            else if (incoming.id != -1) {
+            if (incoming.id != -1) {
                 // Push the new process into the priority queue
                 printf("Received process with ID %d\n", incoming.id);
                 push(&head, incoming, 0);
@@ -187,6 +193,10 @@ void SchedAlgoRR(int quantum) {
                 running.isRunning = false;
             }
         }
+        else if (isEmptyPQ(&head) && last && !running.isRunning) {
+            printf("No more processes to run\n");
+            return;
+        }
     }
 }
 
@@ -209,7 +219,8 @@ int main(int argc, char * argv[])
 
     // Set the signal handler
     // signal(SIGCHLD, handleTermination);
-    signal(SIGUSR1, handleTermination);
+    signal(SIGUSR1, handleProcTerm);
+    signal(SIGUSR2, handleLastProc);
 
     switch (algorithm) {
         case SJF:

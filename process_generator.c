@@ -105,13 +105,8 @@ int main(int argc, char *argv[])
         process_id++;
     }
 
-    // Send a process with ID -1 to indicate the end of the processes
-    process_t last_process = {
-        .id = -2,
-        .runtime = INT_MAX,
-        .priority = INT_MAX,
-    };
-    sendMsg(last_process, msgqid);
+    // Send the last process signal
+    kill(scheduler_pid, SIGUSR2);
 
     // Wait for the scheduler to finish
     waitpid(scheduler_pid, NULL, 0);
