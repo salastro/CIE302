@@ -1,5 +1,3 @@
-#include "DS/Msgq.h"
-#include "DS/PQueue.h"
 #include "headers.h"
 
 int clk;
@@ -23,9 +21,9 @@ int stopProcess(process_t * proc);
 int continueProcess(process_t * proc);
 void handleProcTerm(int signum);
 void handleLastProc(int signum);
-void SchedAlgoSJF();
-void SchedAlgoPHPF();
-void SchedAlgoRR(int quantum);
+void runSJF();
+void runPHPF();
+void runRR(int quantum);
 
 int startProcess(process_t * proc) {
     printf("Process ID %d starting at time %d\n", proc->id, getClk());
@@ -85,7 +83,7 @@ void handleLastProc(int signum) {
 }
 
 // Shortest Job First
-void SchedAlgoSJF() {
+void runSJF() {
     // Loop until there are no more processes
     while (true) {
         if (!last) {
@@ -98,9 +96,7 @@ void SchedAlgoSJF() {
                 push(&head, incoming, incoming.runtime);
             }
         }
-        // Wait for the next clock tick
-        clk = getClk();
-        if (!isEmptyPQ(&head) && !running.isRunning && clk != getClk()) {
+        if (!isEmptyPQ(&head) && !running.isRunning) {
             // Pop the process with the shortest runtime
             running = pop(&head);
             running.pid = startProcess(&running);
@@ -116,7 +112,7 @@ void SchedAlgoSJF() {
 }
 
 // Preemptive Highest Priority First
-void SchedAlgoPHPF() {
+void runPHPF() {
     // Loop until there are no more processes
     while (true) {
         if (!last) {
@@ -134,9 +130,7 @@ void SchedAlgoPHPF() {
                 }
             }
         }
-        // Wait for the next clock tick
-        clk = getClk();
-        if (!isEmptyPQ(&head) && !running.isRunning && clk != getClk()) {
+        if (!isEmptyPQ(&head) && !running.isRunning) {
             // Pop the process with the shortest runtime
             running = pop(&head);
             // Check if the process is new or continued
@@ -157,7 +151,7 @@ void SchedAlgoPHPF() {
 }
 
 // Round Robin
-void SchedAlgoRR(int quantum) {
+void runRR(int quantum) {
     int remainingQuantum = quantum;
     // Loop until there are no more processes
     while (true) {
@@ -172,8 +166,6 @@ void SchedAlgoRR(int quantum) {
         }
         if (!isEmptyPQ(&head) && !running.isRunning) {
             running = pop(&head);
-            if (running.id == -2)
-                return;
             if (!running.isStopped) {
                 int status = startProcess(&running);
                 if (status == -1)
@@ -224,13 +216,13 @@ int main(int argc, char * argv[])
 
     switch (algorithm) {
         case SJF:
-            SchedAlgoSJF();
+            runSJF();
             break;
         case PHPF:
-            SchedAlgoPHPF();
+            runPHPF();
             break;
         case RR:
-            SchedAlgoRR(quantum);
+            runRR(quantum);
             break;
         default:
             perror("Invalid algorithm");

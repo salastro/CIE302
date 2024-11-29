@@ -1,4 +1,4 @@
-CFLAGS = -g -Wall -std=c99 -pedantic -D_POSIX_C_SOURCE=199309L -D_GNU_SOURCE -fstack-protector-all
+CFLAGS = -g -Wall -Wextra -std=c99 -pedantic -D_POSIX_C_SOURCE=199309L -D_GNU_SOURCE -fstack-protector-all -march=native -ftree-vectorize -ffast-math
 
 build:
 	gcc $(CFLAGS) process_generator.c DS/Msgq.c -o process_generator.out
