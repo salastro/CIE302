@@ -18,7 +18,10 @@ typedef struct {
     // bool isStopped;
     int isRunning;
     int isStopped;
+    int remainning;
+    double waitingTime;
     pid_t pid;
+
 } process_t;
 
 int initMsgq(char key);

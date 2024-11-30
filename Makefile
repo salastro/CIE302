@@ -3,12 +3,12 @@ CFLAGS = -g -Wall -Wextra -std=c99 -pedantic -D_POSIX_C_SOURCE=199309L -D_GNU_SO
 build:
 	gcc $(CFLAGS) process_generator.c DS/Msgq.c -o process_generator.out
 	gcc $(CFLAGS) clk.c -o clk.out
-	gcc $(CFLAGS) scheduler.c DS/Msgq.c DS/PQueue.c -o scheduler.out
+	gcc $(CFLAGS) scheduler.c DS/Msgq.c DS/PQueue.c -o scheduler.out -lm
 	gcc $(CFLAGS) process.c DS/Msgq.c -o process.out
 	gcc $(CFLAGS) test_generator.c -o test_generator.out
 
 clean:
-	rm -f *.out processes.txt
+	rm -f *.out processes.txt scheduler.log scheduler.perf
 
 all: clean build
 

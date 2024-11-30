@@ -173,6 +173,9 @@ void readProcessData(const char *filename, int num_rows, process_t *processes) {
         processes[count].isStopped = false;
         processes[count].isRunning = false;
         // processes[count].mtype = 0;
+        processes[count].remainning=processes[count].runtime;
+        processes[count].waitingTime=0;
+
         count++;
     }
 

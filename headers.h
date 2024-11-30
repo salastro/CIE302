@@ -13,6 +13,7 @@
 #include <stdbool.h>
 #include "DS/Msgq.h"
 #include "DS/PQueue.h"
+#include <math.h>
 
 #define SHKEY 300
 
