@@ -71,7 +71,7 @@ void destroyClk(bool terminateAll)
 }
 
 // Wait for one clock second
-void tickClk() {
+void waitClk() {
     int clk = getClk();
     while (clk == getClk());
 }

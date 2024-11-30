@@ -13,12 +13,10 @@ typedef struct {
     int arrival;
     int runtime;
     int priority;
-    bool isRunning;
     bool isStopped;
     int remainning;
     int waitingTime;
     pid_t pid;
-
 } process_t;
 
 typedef struct {

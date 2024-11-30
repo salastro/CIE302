@@ -20,7 +20,7 @@ void sendMsg(process_t process, int msgqid)
     msg_t msg;
     msg.mtype = 1;
     msg.process = process;
-    int send_val = msgsnd(msgqid, &msg, sizeof(msg.process), !IPC_NOWAIT);
+    int send_val = msgsnd(msgqid, &msg, sizeof(msg.process), IPC_NOWAIT);
     if (send_val == -1)
     {
         perror("Error in sending the process");
@@ -32,9 +32,9 @@ void sendMsg(process_t process, int msgqid)
 void receiveMsg(int msgqid, process_t *process)
 {
     msg_t msg;
-    int receive_val = msgrcv(msgqid, &msg, sizeof(msg.process), 0, !IPC_NOWAIT);
+    int receive_val = msgrcv(msgqid, &msg, sizeof(msg.process), 0, IPC_NOWAIT);
     if (receive_val == -1) {
-        perror("Error in receiving the process");
+        // perror("Error in receiving the process");
         process->id = -1;
     }
     else {

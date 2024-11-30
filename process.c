@@ -9,15 +9,16 @@ void simProc() {
     while (remainingtime > 0) {
         // Consume the remaining time only if the clock has ticked
         remainingtime--;
-        tickClk();
-        printf("Process ID %d PID %d, parent %d, time %d\n", id, getpid(), getppid(), getClk());
+        waitClk();
+        printf("Process ID %d PID %d, parent %d, time %d\n", id, getpid(),
+               getppid(), getClk());
     }
 }
 
 int main(int argc, char *argv[]) {
     id = atoi(argv[1]);
     remainingtime = atoi(argv[2]);
-    if (remainingtime < 0) {
+    if (remainingtime <= 0) {
         perror("Invalid remaining time");
         exit(-1);
     }

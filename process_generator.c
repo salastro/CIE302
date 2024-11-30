@@ -92,7 +92,7 @@ int main(int argc, char *argv[])
         // Wait until the arrival time of the next process
         while (getClk() < processes[process_id].arrival) {
             // Print the current time every second
-            tickClk();
+            waitClk();
             printf("Generator %d, time %d\n", getpid(), getClk());
         };
 
@@ -161,7 +161,6 @@ void readProcessData(const char *filename, int num_rows, process_t *processes) {
             &processes[count].runtime, 
             &processes[count].priority) == 4) {
         processes[count].isStopped = false;
-        processes[count].isRunning = false;
         // processes[count].mtype = 0;
         processes[count].remainning=processes[count].runtime;
         processes[count].waitingTime=0;

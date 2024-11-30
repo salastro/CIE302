@@ -5,8 +5,7 @@
 #include "Msgq.h"
 
 // Define a structure for the queue node
-typedef struct Node
-{
+typedef struct Node {
     process_t process;
     int priority;
     struct Node *next;

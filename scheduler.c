@@ -12,11 +12,11 @@ process_t running = {
     .remainning = -1,
     .waitingTime = -1,
     .isStopped = false,
-    .isRunning = false,
     .pid = -1,
 };
 process_t incoming;
 bool last = false;
+bool isRunning = false;
 
 //=============================================================
 int totalProcesses = 0;
@@ -110,7 +110,7 @@ int continueProcess(process_t * proc) {
 }
 
 void handleProcTerm(int signum) {
-    running.isRunning = false;
+    isRunning = false;
     printf("Process ID %d terminated at time %d\n", running.id, getClk());
     running.remainning=0;
     //===================================================
@@ -181,15 +181,15 @@ void runSJF() {
                 push(&head, incoming, incoming.runtime);
             }
         }
-        if (!isEmptyPQ(&head) && !running.isRunning) {
+        if (!isEmptyPQ(&head) && !isRunning) {
             // Pop the process with the shortest runtime
             running = pop(&head);
             running.pid = startProcess(&running);
             if (running.pid == -1)
                 return;
-            running.isRunning = true;
+            isRunning = true;
         }
-        else if (isEmptyPQ(&head) && last && !running.isRunning) {
+        else if (isEmptyPQ(&head) && last && !isRunning) {
             printf("No more processes to run\n");
             return;
         }
@@ -208,14 +208,14 @@ void runPHPF() {
                 printf("Received process with ID %d and priority %d\n",
                        incoming.id, incoming.priority);
                 push(&head, incoming, incoming.priority);
-                if (running.isRunning && head->priority < running.priority) {
+                if (isRunning && head->priority < running.priority) {
                     stopProcess(&running);
                     push(&head, running, running.priority);
-                    running.isRunning = false;
+                    isRunning = false;
                 }
             }
         }
-        if (!isEmptyPQ(&head) && !running.isRunning) {
+        if (!isEmptyPQ(&head) && !isRunning) {
             // Pop the process with the shortest runtime
             running = pop(&head);
             // Check if the process is new or continued
@@ -226,9 +226,9 @@ void runPHPF() {
             } else {
                 continueProcess(&running);
             }
-            running.isRunning = true;
+            isRunning = true;
         }
-        else if (isEmptyPQ(&head) && last && !running.isRunning) {
+        else if (isEmptyPQ(&head) && last && !isRunning) {
             printf("No more processes to run\n");
             return;
         }
@@ -238,18 +238,13 @@ void runPHPF() {
 // Round Robin
 void runRR(int quantum) {
     int remainingQuantum = quantum;
-    // Loop until there are no more processes
     while (true) {
-        if (!last) {
-            // Receive a new process
-            receiveMsg(msqid, &incoming);
-            if (incoming.id != -1) {
-                // Push the new process into the priority queue
-                printf("Received process with ID %d\n", incoming.id);
-                push(&head, incoming, 0);
-            }
+        receiveMsg(msqid, &incoming);
+        if (incoming.id != -1) {
+            printf("Received process with ID %d\n", incoming.id);
+            push(&head, incoming, 0);
         }
-        if (!isEmptyPQ(&head) && !running.isRunning) {
+        if (!isEmptyPQ(&head) && !isRunning) {
             running = pop(&head);
             if (!running.isStopped) {
                 int status = startProcess(&running);
@@ -259,20 +254,22 @@ void runRR(int quantum) {
                 continueProcess(&running);
             }
             remainingQuantum = quantum;
-            running.isRunning = true;
-        }
-        else if (running.isRunning) {
-
+            isRunning = true;
+        } 
+        else if (isRunning) {
             remainingQuantum--;
-            tickClk();
-            if (remainingQuantum <= 0 && !isEmptyPQ(&head)) {
+            running.remainning--;
+            if (running.remainning <= 0) {
+                continue;
+            } 
+            else if (remainingQuantum <= -1 && !isEmptyPQ(&head)) {
                 stopProcess(&running);
                 push(&head, running, 0);
-                running.isRunning = false;
+                isRunning = false;
             }
-        }
-        else if (isEmptyPQ(&head) && last && !running.isRunning) {
-
+            waitClk();
+        } 
+        else if (isEmptyPQ(&head) && last && !isRunning) {
             printf("No more processes to run\n");
             return;
         }
