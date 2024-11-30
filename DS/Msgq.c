@@ -17,21 +17,27 @@ int initMsgq(char key)
 // Send a message to the message queue
 void sendMsg(process_t process, int msgqid)
 {
-    int send_val = msgsnd(msgqid, &process, sizeof(process), 0);
-    if (send_val == -1) {
+    msg_t msg;
+    msg.mtype = 1;
+    msg.process = process;
+    int send_val = msgsnd(msgqid, &msg, sizeof(msg.process), !IPC_NOWAIT);
+    if (send_val == -1)
+    {
         perror("Error in sending the process");
         exit(-1);
     }
 }
 
 // Receive a message from the message queue
-process_t receiveMsg(int msgqid)
+void receiveMsg(int msgqid, process_t *process)
 {
-    process_t process;
-    int receive_val = msgrcv(msgqid, &process, sizeof(process), 0, 0);
+    msg_t msg;
+    int receive_val = msgrcv(msgqid, &msg, sizeof(msg.process), 0, !IPC_NOWAIT);
     if (receive_val == -1) {
         perror("Error in receiving the process");
-        process.id = -1;
+        process->id = -1;
     }
-    return process;
+    else {
+        *process = msg.process;
+    }
 }

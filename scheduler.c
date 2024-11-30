@@ -173,7 +173,7 @@ void runSJF() {
     while (true) {
         if (!last) {
             // Receive a new process
-            incoming = receiveMsg(msqid);
+            receiveMsg(msqid, &incoming);
             if (incoming.id != -1) {
                 // Push the new process into the priority queue
                 printf("Received process with ID %d and runtime %d\n",
@@ -202,7 +202,7 @@ void runPHPF() {
     while (true) {
         if (!last) {
             // Receive a new process
-            incoming = receiveMsg(msqid);
+            receiveMsg(msqid, &incoming);
             if (incoming.id != -1) {
                 // Push the new process into the priority queue
                 printf("Received process with ID %d and priority %d\n",
@@ -242,7 +242,7 @@ void runRR(int quantum) {
     while (true) {
         if (!last) {
             // Receive a new process
-            incoming = receiveMsg(msqid);
+            receiveMsg(msqid, &incoming);
             if (incoming.id != -1) {
                 // Push the new process into the priority queue
                 printf("Received process with ID %d\n", incoming.id);
@@ -300,6 +300,7 @@ int main(int argc, char * argv[])
     // signal(SIGCHLD, handleTermination);
     signal(SIGUSR1, handleProcTerm);
     signal(SIGUSR2, handleLastProc);
+    signal(SIGINT, clearResources);
 
     switch (algorithm) {
         case SJF:

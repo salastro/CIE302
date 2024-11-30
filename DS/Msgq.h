@@ -6,24 +6,26 @@
 #include <sys/msg.h>
 #include <sys/types.h>
 
-// bool and long causes stack smashing
-// TODO: Fix the issue
+// Seperate the message queue structure from the process structure
+// to avoid stack smashing
 typedef struct {
-    // long mtype;
     int id;
     int arrival;
     int runtime;
     int priority;
-    // bool isRunning;
-    // bool isStopped;
-    int isRunning;
-    int isStopped;
+    bool isRunning;
+    bool isStopped;
     int remainning;
-    double waitingTime;
+    int waitingTime;
     pid_t pid;
 
 } process_t;
 
+typedef struct {
+    long mtype;
+    process_t process;
+} msg_t;
+
 int initMsgq(char key);
 void sendMsg(process_t process, int msgqid);
-process_t receiveMsg(int msgqid);
+void receiveMsg(int msgqid, process_t *process);

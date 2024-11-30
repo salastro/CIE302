@@ -1,8 +1,6 @@
 #include "headers.h"
 #include <limits.h>
 
-int msgqid;
-
 void clearResources(int);
 int countProcesses(const char *filename);
 void readProcessData(const char *filename, int num_rows, process_t *processes);
@@ -119,14 +117,6 @@ int main(int argc, char *argv[])
     free(processes);
 
     return 0;
-}
-
-void clearResources(int signum)
-{
-    //TODO Clears all resources in case of interruption
-    msgctl(msgqid, IPC_RMID, (struct msqid_ds *)0);
-    destroyClk(true);
-    exit(0);
 }
 
 // Function to count the number of Processes in the file

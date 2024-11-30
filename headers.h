@@ -26,6 +26,7 @@
 //don't mess with these variable//
 int * shmaddr;                  //
 char msgkey = 'P';             //
+int msgqid;                     //
 //================================
 
 int getClk()
@@ -73,4 +74,14 @@ void destroyClk(bool terminateAll)
 void tickClk() {
     int clk = getClk();
     while (clk == getClk());
+}
+
+
+// Clear all resources in case of interruption
+void clearResources(int signum)
+{
+    //TODO Clears all resources in case of interruption
+    msgctl(msgqid, IPC_RMID, (struct msqid_ds *)0);
+    destroyClk(true);
+    exit(0);
 }

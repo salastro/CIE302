@@ -17,7 +17,7 @@ void simProc() {
 int main(int argc, char *argv[]) {
     id = atoi(argv[1]);
     remainingtime = atoi(argv[2]);
-    if (remainingtime <= 0) {
+    if (remainingtime < 0) {
         perror("Invalid remaining time");
         exit(-1);
     }
