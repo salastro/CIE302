@@ -155,13 +155,13 @@ void readProcessData(const char *filename, int num_rows, process_t *processes) {
 
     // Read and store values into the process_t array
     int count = 0;
-    while (count < num_rows && fscanf(file, "%d %d %d %d", 
+    while (count < num_rows && fscanf(file, "%d %d %d %d %d", 
             &processes[count].id, 
             &processes[count].arrival, 
             &processes[count].runtime, 
-            &processes[count].priority) == 4) {
+            &processes[count].priority,
+            &processes[count].memsize) == 5) {
         processes[count].isStopped = false;
-        // processes[count].mtype = 0;
         processes[count].remainning=processes[count].runtime;
         processes[count].waitingTime=0;
 
@@ -211,12 +211,16 @@ int getSchedulingAlgorithm(int *timeQuantum) {
 void testExtractedData(int num_rows, process_t *processes)
 {
     printf("Extracted data:\n");
-    printf("ID    Arrival    Runtime    Priority\n");
+    printf("ID       Arrival    Runtime    Priority   Memsize\n");
     for (int i = 0; i < num_rows; i++) {
-        printf("%d     %d         %d         %d\n", 
+        // %-<integer>d means an integer with a width of 8 characters, left-aligned
+        // The width is used to align the columns
+        printf("%-8d %-10d %-10d %-10d %-10d\n",
                processes[i].id, 
                processes[i].arrival, 
                processes[i].runtime, 
-               processes[i].priority);
+               processes[i].priority,
+               processes[i].memsize
+               );
     }
 }
