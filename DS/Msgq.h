@@ -13,6 +13,7 @@ typedef struct {
     int arrival;
     int runtime;
     int priority;
+    int memsize;
     bool isStopped;
     int remainning;
     int waitingTime;
