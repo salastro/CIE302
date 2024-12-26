@@ -8,16 +8,17 @@
 
 // Seperate the message queue structure from the process structure
 // to avoid stack smashing
-typedef struct {
+typedef struct process {
     int id;
     int arrival;
     int runtime;
     int priority;
     int memsize;
+    int startAddress;
     bool isStopped;
     int remainning;
-    int waitingTime;
-    pid_t pid;
+    double waitingTime;
+    int pid;
 } process_t;
 
 typedef struct {

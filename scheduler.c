@@ -1,4 +1,6 @@
 #include "headers.h"
+#include "buddy.h"
+#include <string.h>
 
 int clk;
 int msqid;
@@ -13,6 +15,8 @@ process_t running = {
     .waitingTime = -1,
     .isStopped = false,
     .pid = -1,
+    .startAddress = -1,  // Add memory related information
+    .memsize = -1,    // Add memory related information
 };
 process_t incoming;
 bool last = false;
@@ -29,6 +33,11 @@ float CPUutilization=0.0;
 int totalTimeUsed=0;
 //==============================================================
 
+//===================== Buddy System Variables =======================
+#define MEMORY_SIZE 1024
+struct buddy *memory_manager;
+//===================================================================
+
 int startProcess(process_t * proc);
 int stopProcess(process_t * proc);
 int continueProcess(process_t * proc);
@@ -39,6 +48,7 @@ void runPHPF();
 void runRR(int quantum);
 void writePerFile();
 void WritelogFile(const char *state, process_t *proc);
+void logMemoryEvent(const char *action, process_t proc);
 
 int startProcess(process_t * proc) {
     printf("Process ID %d starting at time %d\n", proc->id, getClk());
@@ -47,10 +57,21 @@ int startProcess(process_t * proc) {
     totalTimeUsed= totalTimeUsed+proc->runtime;
     //proc->remainning=(proc->remainning)-(getClk()-refStart);
 
+    // Attempt to allocate memory for the process
+    int mem_offset = buddy_alloc(memory_manager, proc->memsize);
+    if (mem_offset == -1) {
+        printf("Error: Could not allocate memory for process %d\n", proc->id);
+        return -1;
+    }
+    proc->startAddress = mem_offset;
+
+    logMemoryEvent("allocated", *proc);
+
     proc->pid = fork();
     if (proc->pid == -1) {
         perror("Error in forking process");
-        exit(-1);
+        buddy_free(memory_manager,mem_offset);
+        return -1;
     }
     if (proc->pid == 0) {
         char runtime[10];
@@ -62,6 +83,7 @@ int startProcess(process_t * proc) {
         int proc_exec = execvp(args[0], args);
         if (proc_exec == -1) {
             perror("Error in executing process");
+            buddy_free(memory_manager,mem_offset);
             exit(-1);
         }
 
@@ -69,6 +91,7 @@ int startProcess(process_t * proc) {
     }
 
     WritelogFile("started",proc);
+
 
     return proc->pid;
 }
@@ -101,7 +124,7 @@ int continueProcess(process_t * proc) {
     }
     proc->isStopped = false;
     printf("Process ID %d continued at time %d\n", running.id, getClk());
-    
+
     WritelogFile("resumed",proc);
 
     proc->remainning=(proc->remainning)-(getClk()-refStart);
@@ -113,16 +136,26 @@ void handleProcTerm(int signum) {
     isRunning = false;
     printf("Process ID %d terminated at time %d\n", running.id, getClk());
     running.remainning=0;
+
+    // Free memory upon process termination
+    if (running.startAddress != -1) {
+        logMemoryEvent("freed", running);
+        buddy_free(memory_manager, running.startAddress);
+
+        running.startAddress = -1;  // Reset memory start
+    }
+
+
     //===================================================
     // Calculate TA and WTA
     int TA = getClk() - running.arrival;
     float WTA = (float)TA / running.runtime;
-    
+
     totalProcesses++;
     totalWaitingTime += getClk() - running.arrival - running.runtime;
     totalWTA += WTA;
     WTAValues[totalProcesses - 1] = WTA;
-        // Log the finished process
+    // Log the finished process
     FILE *outFile = fopen("scheduler.log", "a");
     fprintf(outFile, "At time %d process %d finished arr %d total %d remain 0 wait %d TA %d WTA %.2f\n",
             getClk(), running.id, running.arrival, running.runtime,
@@ -137,14 +170,34 @@ void handleLastProc(int signum) {
 
 void WritelogFile(const char *state, process_t *proc) {
     FILE *outFile = fopen("scheduler.log", "a");
+    if (outFile == NULL) {
+        perror("Error opening scheduler log file");
+        return;
+    }
     fprintf(outFile, "At time %d process %d %s arr %d total %d remain %d wait %.2lf\n",
             getClk(), proc->id, state, proc->arrival, proc->runtime, proc->remainning,
             proc->waitingTime);
     fclose(outFile);
 }
 
+void logMemoryEvent(const char *action, process_t proc) {
+    FILE *memoryLog = fopen("memory.log", "a");
+    if (memoryLog == NULL) {
+        perror("Error opening memory log file");
+        return;
+    }
+    if (strcmp(action,"allocated")==0)
+        fprintf(memoryLog, "At time %d allocated %d bytes for process %d from %d to %d\n",
+                getClk(), proc.memsize, proc.id, proc.startAddress,proc.startAddress + buddy_size(memory_manager, proc.startAddress) - 1);
+    else
+        fprintf(memoryLog, "At time %d freed %d bytes from process %d from %d to %d\n",
+                getClk(), proc.memsize, proc.id, proc.startAddress,proc.startAddress + buddy_size(memory_manager, proc.startAddress) - 1);
+    fclose(memoryLog);
+}
+
+
 void writePerFile() {
-    
+
     float avgWTA = totalWTA / totalProcesses;
     float avgWaitingTime = (float)totalWaitingTime / totalProcesses;
 
@@ -158,7 +211,7 @@ void writePerFile() {
     variance /= totalProcesses;
     float stdWTA = sqrt(variance);
     CPUutilization=((float)totalTimeUsed/getClk())*100;
-    
+
     FILE *perfFile = fopen("scheduler.perf", "w");
     fprintf(perfFile, "CPU utilization = %.2f %%\n",CPUutilization);
     fprintf(perfFile, "Avg WTA = %.2f\n", avgWTA);
@@ -184,7 +237,14 @@ void runSJF() {
         if (!isEmptyPQ(&head) && !isRunning) {
             // Pop the process with the shortest runtime
             running = pop(&head);
-            running.pid = startProcess(&running);
+            //check the memory allocation
+            if(startProcess(&running)==-1)
+            {
+                push(&head, running, running.runtime);
+                waitClk();
+                continue;
+            }
+
             if (running.pid == -1)
                 return;
             isRunning = true;
@@ -220,7 +280,13 @@ void runPHPF() {
             running = pop(&head);
             // Check if the process is new or continued
             if (!running.isStopped) {
-                running.pid = startProcess(&running);
+                if (startProcess(&running) == -1)
+                {
+                    push(&head, running, running.priority);
+                    waitClk();
+                    continue;
+                }
+
                 if (running.pid == -1)
                     return;
             } else {
@@ -247,9 +313,12 @@ void runRR(int quantum) {
         if (!isEmptyPQ(&head) && !isRunning) {
             running = pop(&head);
             if (!running.isStopped) {
-                int status = startProcess(&running);
-                if (status == -1)
-                    return;
+                if (startProcess(&running) == -1)
+                {
+                    push(&head, running, 0);
+                    waitClk();
+                    continue;
+                }
             } else {
                 continueProcess(&running);
             }
@@ -299,6 +368,23 @@ int main(int argc, char * argv[])
     signal(SIGUSR2, handleLastProc);
     signal(SIGINT, clearResources);
 
+
+    // Initialize memory manager
+    memory_manager = buddy_new(MEMORY_SIZE);
+    if (!memory_manager) {
+        fprintf(stderr, "Failed to initialize buddy system\n");
+        exit(-1);
+    }
+
+    // Log the header of the memory log
+    FILE *memoryLog = fopen("memory.log", "w");
+    if (memoryLog == NULL) {
+        perror("Error opening memory log file");
+    }
+    fprintf(memoryLog, "#At time x allocated y bytes for process z from i to j\n");
+    fclose(memoryLog);
+
+
     switch (algorithm) {
         case SJF:
             runSJF();
@@ -314,5 +400,6 @@ int main(int argc, char * argv[])
             exit(-1);
     }
     writePerFile();
+    buddy_destory(memory_manager);
     destroyClk(false);
 }
