@@ -57,3 +57,4 @@ dkms.conf
 processes.txt
 scheduler.log
 scheduler.perf
+memory.log
